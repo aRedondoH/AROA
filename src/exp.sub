@@ -1,0 +1,11 @@
+#!/bin/bash
+#$ -l h_vmem=30G
+#$ -j yes
+#$ -cwd
+
+# Load anaconda malware environment
+conda activate malware-env3
+# Run the executable
+python /LUSTRE/users/aredondo/AROA_MC_Binary/src/experiment.py $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+# Deactivate anaconda environment
+conda deactivate
