@@ -34,12 +34,6 @@ def getData(numFea):
     clfNB = BernoulliNB()
     clfNB.fit(X_train,y_train) # Fit NB with X_train untainted
 
-    # obfuMalDf = pd.read_csv("../Data/ObfusctionPaper/staDynVt3000BinaryObfuscated.csv")
-    # obfuMalDf = obfuMalDf[staticColumnsSmall]
-    # cutDf = np.random.rand(len(obfuMalDf)) < ((benignDf.shape[0]*100)/len(obfuMalDf))/100 # Similar malware files to benign
-    # obfuMalwareCutDf = obfuMalDf[cutDf]
-    # dataObfuDf = benignDf.append(obfuMalwareCutDf, ignore_index=True) # carefull if both do not have the same shape
-    # X_dataObfu, y_dataObfu= dataObfuDf.iloc[:,:-1],dataObfuDf.iloc[:,-1]
     benignDf = pd.read_csv("../Data/staDynBenignBinary.csv", index_col=0)
     benignDf = benignDf[customCol] # only for testing
     obfuMalDf = pd.read_csv("../Data/staDynVt3000BinaryObfuscated.csv",index_col=0)
@@ -49,6 +43,23 @@ def getData(numFea):
     X_dataObfu, y_dataObfu= dataObfuDf.iloc[:,:-1],dataObfuDf.iloc[:,-1]
     X_dataObfu = X_dataObfu.values
     return X_dataObfu, y_dataObfu, clfNB
+
+def getUti(yPred,ytest):
+    uTP=1    # utility True Positives 
+    uFP=0    # utility False Positives
+    uFN=-5    # utility False Negatives
+    uTN=1   # utility True Negatives
+    utiExp = 0
+    for i in range(len(ytest)):
+        if yPred[i:i+1][0]==1 and ytest[i:i+1][0] ==1:
+            utiExp += uTP
+        if yPred[i:i+1][0]==1 and ytest[i:i+1][0] == 0:
+            utiExp += uFP
+        if yPred[i:i+1][0]==0 and ytest[i:i+1][0] == 1:
+            utiExp += uFN
+        if yPred[i:i+1][0]==0 and ytest[i:i+1][0] == 0:
+            utiExp += uTN
+    return utiExp/len(ytest)
 
 def exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores,output):
     uTP=1    # utility True Positives 
@@ -68,35 +79,21 @@ def exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores
     numFea = 262 # this is manual for the moment (best accuracy in 13 number of features), 262 gets 0.85 acu
     X_test,y_test,clfNB = getData(numFea)
 
-    # yPred = clfNB.predict(X_test)
-    
-    # acNB = round(np.mean(yPred == y_test),3)
-    # erNB = round(mean_squared_error(y_test, yPred),3)
-    # tnNB, fnNB, tpNB, fpNB = extractConfMatrix(y_test,yPred)
-
-    # fprNB = round(fpNB/(fpNB+tnNB),3)
-    # fnrNB = round(fnNB /(fnNB+tpNB),3)
-
-    yEstimatesNB = clfNB.predict_proba(X_test)
-    print("yEstimatesNB:", yEstimatesNB)
-    euNB = getExpectedUtility(utMat,yEstimatesNB)
-    print("VectorEuNb:",euNB)
-    sumEuNB = np.sum(euNB)
-    print("SumEUNB:", sumEuNB)
-    maxEuNB = np.max(euNB)
-    print("MaxEuNB: ", maxEuNB)
-    
+    yPred = clfNB.predict(X_test)
+    y_test = y_test.values
+    print("yPred:",type(yPred), len(yPred),yPred.shape)
+    print("y_test:",type(y_test), len(y_test),y_test.shape)
+    NBeu = getUti(yPred,y_test)
+    print("NB: ", NBeu)
 
     posteriorAroa = getAttacksDistPar(X_test, clfNB, varBeta, numCores, K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack)
-    print("posteriorAroa: ", posteriorAroa)
-    euAROA = getExpectedUtility(utMat,posteriorAroa)
-    print("vectorEuAROA: ", euAROA)
-    sumEuAROA = np.sum(euAROA)
-    print("SumEuAroa: ", sumEuAROA)
-    maxEuAROA = np.max(euAROA)
-    print("MaxEuAroa: ", maxEuAROA)
-    
+    # print("posteior: ", posteriorAroa)
+    # y_Aroa = getAroaLabelFromPosterior(posteriorAroa, utMat)
+    yAROABin = np.argmax(posteriorAroa, axis=1)
+    print("yAROABin", yAROABin)
+    AROAeu = getUti(yAROABin,y_test)
 
+    
     # y_Aroa = getAroaLabelFromPosterior(posteriorAroa, utMat)
     # aroaAcNB = round(accuracy_score(y_test, y_Aroa),3)
     # aroaErNB = round(mean_squared_error(y_test, y_Aroa),3)
@@ -107,13 +104,15 @@ def exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores
 
      #print("AC NB: ", acNB, " err: ", erNB," tp:",tpNB, " tn:", tnNB, " fp:",fpNB," fn:",fnNB, "fpr:",fprNB, " fnr:", fnrNB)
     # print("AC AROA: ", aroaAcNB, " err: ", aroaErNB," tp:",tpAroa, " tn:", tnAroa, " fp:",fpAroa," fn:",fnAroa, "fpr:", fprAROA, "fnr: ", fnrAROA)
-    
+
     end = time.time() # End timer
     timeLast = (end-start)
     timeLastFor = time.strftime("%H:%M:%S", time.gmtime(timeLast))
     print("Time: ", timeLastFor)
 
-    vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,sumEuNB,maxEuNB,sumEuAROA,maxEuAROA,timeLastFor])
+    vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,NBeu,0,AROAeu,0,timeLastFor])
+
+    # vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,sumEuNB,maxEuNB,sumEuAROA,maxEuAROA,timeLastFor])
 
     # vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,acNB,erNB,tpNB, tnNB,fpNB,fnNB,fprNB,fnrNB,aroaAcNB,aroaErNB,tpAroa, tnAroa,fpAroa,fnAroa,fprAROA,fnrAROA,timeLastFor])
 
