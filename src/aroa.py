@@ -16,7 +16,6 @@ from csv import writer
 from features import *
 import itertools
 
-
 ## AROA functions
 def getPriors(clf):
     """Obtain priors
@@ -24,6 +23,7 @@ def getPriors(clf):
     clf -- classifier (NB)
     """
     return np.exp(clf.class_log_prior_)
+
 def getLikelihood(X, clf):
     """Obtain likelihood (xposterior)
 
@@ -35,25 +35,6 @@ def getLikelihood(X, clf):
 
     """
     return np.exp(clf._joint_log_likelihood(X))
-
-# def getOriginalsMC(binary, n, numberOfFeatures,feaToCheck):
-#     """Get possible originals 
-
-#     binary -- binary to obtain the possible originals
-#     n -- number of possible originals to generate
-#     numberOfFeatures -- range of features to create the originals
-#     feaToCheck -- number of features to check in the binary
-#     """
-#     possibleOri = np.empty((0,binary.shape[0]), int)
-#     for i in range(n):
-#         binCopy = np.copy(binary)
-#         indexVector = np.where(binary == 1)[0]
-#         if len(indexVector) >= 1:
-#             for p in range(feaToCheck):
-#                 randFea = rd.choice(indexVector)
-#                 binCopy[randFea:randFea+1] = 0    
-#         possibleOri = np.append(possibleOri, [binCopy], axis=0)
-#     return possibleOri
 
 def getOriginalsMC(binary,n,feaToCheck):
     """Get possible originals 
@@ -90,25 +71,6 @@ def adversarialUtilities(yc, y):
     if (yc == 0) and (y == 1):
         utility = delta1
     return utility
-
-# def getAttacksMC(binary, n,numberOfFeatures,featuresToAttack):
-#     """Get possible attacks 
-
-#     binary -- binary to attack
-#     n -- number of possible attacks to generate
-#     numberOfFeatures -- range of features to generate the attack
-#     featuresToAttack -- number of features to attack per binary
-#     """
-#     possibleAttacks = np.empty((0, binary.shape[0]), int)
-#     for i in range(n):
-#         binCopy = np.copy(binary)
-#         indexVector = np.where(binary == 0)[0]
-#         if len(indexVector) >= 1:
-#             for p in range(featuresToAttack):
-#                 randFea = rd.choice(indexVector)
-#                 binCopy[randFea:randFea+1] = 1
-#         possibleAttacks = np.append(possibleAttacks,[binCopy],axis=0)
-#     return possibleAttacks
 
 def getAttacksMC(binary, n,featuresToAttack):
     """Get possible attacks 
@@ -163,61 +125,6 @@ def randomProb(deltas):
     """
     return np.random.beta(deltas[:, 0], deltas[:, 1])
 
-# def disProbableAttacks(possibleOriginal, binFromTest, clf, var, K, nAtt,feaToAttack):
-#     """AROA simulation of Alan's distribution of probable attacks
-
-#     possibleOriginal -- a possible original obtained selecting from test set
-#     binFromTest -- binary from test set
-#     clf -- NB classifier
-#     d -- Alan's utility when fools Cleo d=[0,1]
-#     var -- variance
-#     K -- number of simulations to perform
-#     nAtt -- number of possible attacks to generate
-#     feaToAttack -- number of features to attack
-#     """
-#     counter = 0
-#     found = 0
-#     while (found == 0):
-#         if counter == 5:
-#             indexAttack = 0
-#             break
-#         # print("NumberOfIterations: ", counter)
-#         possibleAttacks = getAttacksMC(possibleOriginal, nAtt,feaToAttack)
-#         # print(possibleAttacks)
-#         for i in range(possibleAttacks.shape[0]):
-#             if np.mean(np.in1d(binFromTest, possibleAttacks[i:i+1])) == 1:
-#                 # print("i: ", i)
-#                 indexAttack = i
-#                 # print(binFromTest)
-#                 # print(possibleAttacks[i:i+1])
-#                 found = 1
-#                 break
-#         counter += 1
-#     # print("indexFound: ", indexAttack)
-#     # Obtain the distribution by simulation
-#     # here we will store the number of times each attack is maximum
-#     distribution = np.zeros(len(possibleAttacks))
-#     # print("Distribution: ")
-#     # print(distribution)
-#     deltas = getDeltas(getR(possibleAttacks, clf), var)
-#     for i in range(K):
-#         randProb = randomProb(deltas)
-#         # print("randProb: ", randProb)
-#         # expUti = randProb * adversarialUtilities(1,1) + (1.0 - randProb) * adversarialUtilities(0,1)
-#         expUti = 1.0 - randProb
-#         distribution[np.argmax(expUti)] += 1
-#         # print("EU in dis[indexAttack]: ", distribution[indexAttack])
-#     # print("DisAfter: ")
-#     # print(list(distribution))
-#     # print("index, dis[index],probAttack ", indexAttack, distribution[indexAttack], distribution[indexAttack]/K)
-#     if found == 0:
-#         probAttack = 0.0  # not attack found
-#     else:
-#         # probAttack = sum(distribution[indexAttack])/K # sum to obtain 0.0 in case of distribution[indexAttack]) == []
-#         probAttack = distribution[indexAttack]/K
-#     # print("ProbAttack: ", probAttack)
-#     return probAttack, possibleAttacks[indexAttack]
-
 def disProbableAttacks(possibleOriginal, binFromTest, clf, var, K, nAtt,feaToAttack,nTriesFindAttack):
     """AROA simulation of Alan's distribution of probable attacks
 
@@ -244,14 +151,11 @@ def disProbableAttacks(possibleOriginal, binFromTest, clf, var, K, nAtt,feaToAtt
             if np.mean(np.in1d(binFromTest, possibleAttacks[i:i+1])) == 1:
                 # print("i: ", i)
                 indexAttack = i
-                # print(binFromTest)
-                # print(possibleAttacks[i:i+1])
                 found = 1
                 break
         triesCounter += 1
     # print("indexFound: ", indexAttack)
-    # Obtain the distribution by simulation
-    # here we will store the number of times each attack is maximum
+    # Obtain the distribution by simulation (here we will store the number of times each attack is maximum)
     distribution = np.zeros(len(possibleAttacks))
     # print("Distribution: ")
     # print(distribution)
@@ -270,12 +174,10 @@ def disProbableAttacks(possibleOriginal, binFromTest, clf, var, K, nAtt,feaToAtt
         probAttack = 0.0  # not attack found
         possibleAttack = binFromTest # the binary from test untainted
     else:
-        # probAttack = sum(distribution[indexAttack])/K # sum to obtain 0.0 in case of distribution[indexAttack]) == []
         probAttack = distribution[indexAttack]/K
         possibleAttack = possibleAttacks[indexAttack]
     # print("ProbAttack: ", probAttack)
     return probAttack, possibleAttack
-
 
 def getAroaLabelFromPosterior(vecPosterior, ut):
     """Obtain which label (benign or malware) has higher probability
@@ -295,7 +197,6 @@ def getExpectedUtility(vecPosterior, ut):
     prodUtWithPosterior = np.dot(ut, vecPosterior.transpose())
     
     return prodUtWithPosterior
-
 
 def getPosterior(binary, clf, var, K, nOri, nAtt,feaToCheck,feaToAttack,nTriesFindAttack):
     """Obtain AROA posterior distribution, a double dimension vector 
