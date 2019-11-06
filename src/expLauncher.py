@@ -14,6 +14,7 @@ def expCombinations():
     feaToCheck = [0] # number of features (from the originals generated) to change from 1 to 0
     feaToAttack = [370,372,374,376,378,380,400] # number of features to attack per binary to change the features from 0 to 1
     nTriesFindAttack = [5] # number of tries to find the attack from the binary obtained from test set
+    expType = [1] # expType =0 --> accuracy ; expType=1 --> expectedUtility
     numCores = [16] # number of cores to be used in the cluster
 
     grid = product(varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores)
@@ -22,7 +23,10 @@ def expCombinations():
         # Output csv
         output = "pathTo/../Output/expCom29.csv"
         if not os.path.isfile(output):
-            columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','nbAcu','nbEr','tpNB','tnNB','fpNB','fnNB','fprNB','fnrNB','aroaAcu','aroaEr','tpAroa','tnAroa','fpAroa','fnAroa','fprAROA','fnrAROA','time']
+            if expType[-1] == 0:
+                columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','nbAcu','nbEr','tpNB','tnNB','fpNB','fnNB','fprNB','fnrNB','aroaAcu','aroaEr','tpAroa','tnAroa','fpAroa','fnAroa','fprAROA','fnrAROA','time'] # Accuracy
+            if expType[-1] == 1:
+                columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','euNB','euAROA','time'] # Expected utility
             with open(output, 'a') as f:
                 fw = writer(f)
                 fw.writerow(columns)
@@ -42,6 +46,7 @@ def expSpecific():
     feaToCheck = 0 # number of features (from the originals generated) to change from 0 to 1
     feaToAttack = 320 # number of features to attack per binary to change the features from 0 to 1
     nTriesFindAttack = 5 # number of tries to find the attack from the binary obtained from test set
+    expType = 0 # expType =0 --> accuracy ; expType=1 --> expectedUtility
     numCores = 16 # number of cores to be used in the cluster
 
     numberOfExperiments = 1000
@@ -51,8 +56,10 @@ def expSpecific():
         # Output csv
         output = "pathTo/../Output/expSpe_39.csv"
         if not os.path.isfile(output):
-            # columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','nbAcu','nbEr','tpNB','tnNB','fpNB','fnNB','fprNB','fnrNB','aroaAcu','aroaEr','tpAroa','tnAroa','fpAroa','fnAroa','fprAROA','fnrAROA','time']
-            columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','euNB','euNBMax','euAROA','euAROAmax','time']
+            if expType == 0:
+                columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','nbAcu','nbEr','tpNB','tnNB','fpNB','fnNB','fprNB','fnrNB','aroaAcu','aroaEr','tpAroa','tnAroa','fpAroa','fnAroa','fprAROA','fnrAROA','time'] # Accuracy
+            if expType == 1:
+                columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','euNB','euAROA','time'] # Expected utility
             with open(output, 'a') as f:
                 fw = writer(f)
                 fw.writerow(columns)

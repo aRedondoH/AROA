@@ -61,61 +61,63 @@ def getUti(yPred,ytest):
             utiExp += uTN
     return utiExp/len(ytest)
 
-def exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores,output):
+def exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,expType,numCores,output):
     uTP=1    # utility True Positives 
     uFP=0    # utility False Positives
     uFN=-5    # utility False Negatives
     uTN=1   # utility True Negatives
     utMat = np.array([[uTP,uFP],[uFN,uTN]]) # Classifier utility matrix
-
-    # expDf = pd.DataFrame(columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','nbAcu','nbEr','tpNB','tnNB','fpNB','fnNB','fprNB','fnrNB','aroaAcu','aroaEr','tpAroa','tnAroa','fpAroa','fnAroa','fprAROA','fnrAROA','time'])
-    expDf = pd.DataFrame(columns=['expNum','varBeta','K','nOri','nAtt','feaToCheck','feaToAttack','nTriesFindAttack','euNB','euNBMax','euAROA','euAROAmax','time'])
     
-
     print("Utility classifier: uTP:",uTP, " uFP: ",uFP," uFN:", uFN," uTN:",uTN)
     print("expNum:",ite,'varBeta:',varBeta,'K:',K,'nOri:',nOri,'nAtt:',nAtt," feaToCheck: ",feaToCheck, " feaToAttack:", feaToAttack," nTriesFindAttack:",nTriesFindAttack,'numCores:', numCores,'output:', output)
 
     start = time.time() # Start timer
     numFea = 262 # this is manual for the moment (best accuracy in 13 number of features), 262 gets 0.85 acu
-    X_test,y_test,clfNB = getData(numFea)
+    X_test,y_test,clfNB = getData(numFea) # we use top1000 features
 
-    yPred = clfNB.predict(X_test)
-    y_test = y_test.values
-    print("yPred:",type(yPred), len(yPred),yPred.shape)
-    print("y_test:",type(y_test), len(y_test),y_test.shape)
-    NBeu = getUti(yPred,y_test)
-    print("NB: ", NBeu)
+    if expType == 0: # Obtain accuracy along with other mesuares such as FPR and FNR
+        yEstimatesNB = clfNB.predict_proba(X_test)
+        print("yEstimatesNB:", yEstimatesNB)
+        yUti= getAroaLabelFromPosterior(yEstimatesNB, utMat)
+        acNB = round(accuracy_score(y_test, yUti),3)
+        erNB = round(mean_squared_error(y_test, yUti),3)
+        tnNB, fnNB, tpNB, fpNB = extractConfMatrix(y_test,yUti)
+        fprNB = round(fpNB/(fpNB+tnNB),3)
+        fnrNB = round(fnNB /(fnNB+tpNB),3)
 
-    posteriorAroa = getAttacksDistPar(X_test, clfNB, varBeta, numCores, K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack)
-    # print("posteior: ", posteriorAroa)
-    # y_Aroa = getAroaLabelFromPosterior(posteriorAroa, utMat)
-    yAROABin = np.argmax(posteriorAroa, axis=1)
-    print("yAROABin", yAROABin)
-    AROAeu = getUti(yAROABin,y_test)
+        posteriorAroa = getAttacksDistPar(X_test, clfNB, varBeta, numCores, K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack)
+        y_Aroa = getAroaLabelFromPosterior(posteriorAroa, utMat)
+        aroaAcNB = round(accuracy_score(y_test, y_Aroa),3)
+        aroaErNB = round(mean_squared_error(y_test, y_Aroa),3)
+        tnAroa, fnAroa, tpAroa, fpAroa = extractConfMatrix(y_test,y_Aroa)
+        fprAROA = round(fpAroa/(fpAroa+tnAroa),3)
+        fnrAROA = round(fnAroa/(fnAroa+tpAroa),3)
 
-    
-    # y_Aroa = getAroaLabelFromPosterior(posteriorAroa, utMat)
-    # aroaAcNB = round(accuracy_score(y_test, y_Aroa),3)
-    # aroaErNB = round(mean_squared_error(y_test, y_Aroa),3)
-    # tnAroa, fnAroa, tpAroa, fpAroa = extractConfMatrix(y_test,y_Aroa)
+        end = time.time() # End timer
+        timeLast = (end-start)
+        timeLastFor = time.strftime("%H:%M:%S", time.gmtime(timeLast))
+        print("Time: ", timeLastFor)
 
-    # fprAROA = round(fpAroa/(fpAroa+tnAroa),3)
-    # fnrAROA = round(fnAroa/(fnAroa+tpAroa),3)
+        vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,acNB,erNB,tpNB, tnNB,fpNB,fnNB,fprNB,fnrNB,aroaAcNB,aroaErNB,tpAroa, tnAroa,fpAroa,fnAroa,fprAROA,fnrAROA,timeLastFor])
 
-     #print("AC NB: ", acNB, " err: ", erNB," tp:",tpNB, " tn:", tnNB, " fp:",fpNB," fn:",fnNB, "fpr:",fprNB, " fnr:", fnrNB)
-    # print("AC AROA: ", aroaAcNB, " err: ", aroaErNB," tp:",tpAroa, " tn:", tnAroa, " fp:",fpAroa," fn:",fnAroa, "fpr:", fprAROA, "fnr: ", fnrAROA)
+    if expType == 1: # Obtain expected utility
+        yPred = clfNB.predict(X_test)
+        y_test = y_test.values
+        print("yPred:",type(yPred), len(yPred),yPred.shape)
+        print("y_test:",type(y_test), len(y_test),y_test.shape)
+        NBeu = getUti(yPred,y_test)
+        print("NB: ", NBeu)
+        posteriorAroa = getAttacksDistPar(X_test, clfNB, varBeta, numCores, K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack)
+        yAROABin = np.argmax(posteriorAroa, axis=1)
+        print("yAROABin", yAROABin)
+        AROAeu = getUti(yAROABin,y_test)
 
-    end = time.time() # End timer
-    timeLast = (end-start)
-    timeLastFor = time.strftime("%H:%M:%S", time.gmtime(timeLast))
-    print("Time: ", timeLastFor)
+        end = time.time() # End timer
+        timeLast = (end-start)
+        timeLastFor = time.strftime("%H:%M:%S", time.gmtime(timeLast))
+        print("Time: ", timeLastFor)
 
-    vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,NBeu,0,AROAeu,0,timeLastFor])
-
-    # vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,sumEuNB,maxEuNB,sumEuAROA,maxEuAROA,timeLastFor])
-
-    # vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,acNB,erNB,tpNB, tnNB,fpNB,fnNB,fprNB,fnrNB,aroaAcNB,aroaErNB,tpAroa, tnAroa,fpAroa,fnAroa,fprAROA,fnrAROA,timeLastFor])
-
+        vec = np.array([ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,NBeu,AROAeu,timeLastFor])
     with open(output, 'a') as f:
         fw = writer(f)
         fw.writerow(vec)
@@ -123,7 +125,7 @@ def exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores
 
 def main():
 
-    # Get parameters ( 1(index) +7(parameters) +1(output) )
+    # Get parameters ( 1(index) +9(parameters) +1(output) )
     # Index
     ite = int(sys.argv[1])
     # Parameters
@@ -134,12 +136,13 @@ def main():
     feaToCheck = int(sys.argv[6])
     feaToAttack = int(sys.argv[7])
     nTriesFindAttack = int(sys.argv[8])
-    numCores = int(sys.argv[9])
+    expType = int(sys.argv[9])
+    numCores = int(sys.argv[10])
     # Output
-    output = str(sys.argv[10])
+    output = str(sys.argv[11])
 
     print("ite: ",ite,"varBeta:",varBeta,"K:",K,"nOri:",nOri,"nAtt:",nAtt,"feaToCheck:",feaToCheck,"feaToAttack:",feaToAttack," nTriesFindAttack:",nTriesFindAttack,"numCores:",numCores,"output:",output)
-
-    exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,numCores,output)
+    
+    exp(ite,varBeta,K,nOri,nAtt,feaToCheck,feaToAttack,nTriesFindAttack,expType,numCores,output)
     
 main()

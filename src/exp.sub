@@ -6,6 +6,6 @@
 # Load anaconda malware environment
 conda activate malware-env3
 # Run the executable
-python pathTo/../experiment.py $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10}
+python pathTo/../experiment.py $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11}
 # Deactivate anaconda environment
 conda deactivate
